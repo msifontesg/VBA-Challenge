@@ -1,0 +1,184 @@
+Option Explicit
+''Declare global variable to use across all modules:
+Global OG_table_row_count As Long
+Global summary_table_rows As Long
+
+
+Sub stock_summary()
+
+Dim function_min_row As Range
+Dim i As Long
+Dim j As Long
+Dim rownum As Long
+Dim Newest_date_row As Long
+Dim Oldest_date_row As Long
+Dim closing_value As Double
+Dim opening_value As Double
+Dim year_change As Double
+Dim percent_change As Double
+Dim stock_volume As Double
+Dim worksheet_number As Integer
+Dim Worksheet As Worksheet
+
+For worksheet_number = 1 To 3
+    
+Worksheets(worksheet_number).Select
+    
+
+    'Sort data by ticker value and then by ascending date
+    Call Sorting_ticker_by_date_ascending
+    
+    ' Set an initial variable for holding the brand name
+    Dim Ticker As String
+    
+    'Keep track of the location for each ticker in the summary table
+    summary_table_rows = 2
+    
+         'Set the initial stock volume to 0
+          stock_volume = 0
+
+    
+    'Loop through all stocks in the original table
+    For i = 2 To Cells(Rows.Count, "A").End(xlUp).row
+           
+        'Check if still within the same ticker name
+        If Cells(i + 1, 1).Value <> Cells(i, 1).Value Then
+        
+            'Set the ticker name
+            Ticker = Cells(i, "A").Value
+        
+            'Print ticker name in the summary table
+            Cells(summary_table_rows, "I").Value = Ticker
+            
+            'Capture the last row for this ticker name sorted ascending by date from the original table
+            Newest_date_row = Cells(i, "B").row
+            
+            'Set the closing_value to qty in column F for this row
+            closing_value = Cells(Newest_date_row, "F").Value
+            'Cells(summary_table_rows, "Q").Value = closing_value
+           
+            'Capture the first row for this ticker name sorted ascending by date
+            Oldest_date_row = Cells(i, "B").row - 250
+                       
+            'Set the opening_value to qty in column C
+            opening_value = Cells(Oldest_date_row, "C")
+            'Cells(summary_table_rows, "P").Value = opening_value
+            
+            'Calculate yearly change
+            year_change = (closing_value - opening_value)
+            Cells(summary_table_rows, "J") = year_change
+            
+            'Calculate % change
+            percent_change = (year_change / opening_value)
+            Cells(summary_table_rows, "K") = FormatPercent(percent_change)
+            
+            'Add to the volume total
+            stock_volume = stock_volume + Cells(i, "G").Value
+            Cells(summary_table_rows, "L") = stock_volume
+            
+            'Add one to the summary table row
+            summary_table_rows = summary_table_rows + 1
+            
+            'Reset the volume total
+            stock_volume = 0
+        
+        Else
+        
+        'Add to the volume total
+        stock_volume = stock_volume + Cells(i, "G").Value
+        
+        End If
+        
+
+        
+    Next i
+    
+    'Format summary table
+    For j = 2 To Cells(Rows.Count, "I").End(xlUp).row
+        
+        'Yearly change
+        'Red if negative
+        If Cells(j, "J").Value < 0 Then
+            Cells(j, "J").Interior.Color = RGB(255, 0, 0)
+        Else
+        'Green if positive
+            Cells(j, "J").Interior.Color = RGB(0, 255, 0)
+        End If
+        
+        
+    Next j
+
+    'Create column headers
+    Cells(1, "I").Value = "Ticker"
+    Cells(1, "J").Value = "Yearly Change"
+    Cells(1, "K").Value = "Percent Change"
+    Cells(1, "L").Value = "Total Stock Volume"
+
+    'Greatest summary table
+    
+    Call second_summary
+    
+        
+
+
+Next worksheet_number
+    
+End Sub
+
+Sub second_summary()
+Dim k As Long
+
+'Create column headers
+Cells(1, "P").Value = "Ticker"
+Cells(1, "Q").Value = "Value"
+Cells(2, "O").Value = "Greatest % Increase"
+Cells(3, "O").Value = "Greatest % Decrease"
+Cells(4, "O").Value = "Greatest Total Volume"
+
+
+'Capture the number of rows in the summary table
+    summary_table_rows = Cells(Rows.Count, "I").End(xlUp).row
+
+'Define variables
+Dim grt_prcnt_increase As Double
+Dim grt_prcnt_decrease As Double
+Dim grt_total_volume As Double
+
+'Greatest % increase
+grt_prcnt_increase = Application.WorksheetFunction.Max(Range("J2:J" & summary_table_rows))
+Cells(2, "Q").Value = grt_prcnt_increase
+    
+    'Ticker
+    For k = 2 To summary_table_rows
+        If Cells(k, "J").Value = grt_prcnt_increase Then
+            Cells(2, "P").Value = Cells(k, "I")
+            
+        End If
+    Next k
+
+'Greatest % decrease
+grt_prcnt_decrease = Application.WorksheetFunction.min(Range("J2:J" & summary_table_rows))
+Cells(3, "Q").Value = grt_prcnt_decrease
+    
+    'Ticker
+    For k = 2 To summary_table_rows
+        If Cells(k, "J").Value = grt_prcnt_decrease Then
+            Cells(3, "P").Value = Cells(k, "I")
+            
+        End If
+    Next k
+
+'Greatest % decrease
+grt_total_volume = Application.WorksheetFunction.Max(Range("L2:L" & summary_table_rows))
+Cells(4, "Q").Value = grt_total_volume
+    
+    'Ticker
+    For k = 2 To summary_table_rows
+        If Cells(k, "J").Value = grt_total_volume Then
+            Cells(4, "P").Value = Cells(k, "I")
+        End If
+    Next k
+
+End Sub
+
+
